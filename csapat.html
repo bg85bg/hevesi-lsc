@@ -499,7 +499,7 @@ function vSquad(){
   if(S.sq!=="ALL"&&!S.view.includes(S.sq))S.sq="ALL";
   const ps=sortPlayers(S.players.filter(p=>S.view.includes(p.squad)&&(S.sq==="ALL"||p.squad===S.sq)));
   let h=`<div class="toolbar"><div class="seg" role="group" aria-label="Keret szűrő">`+[["ALL","Mind"],...S.view.map(s=>[s,SQN[s]||s])].map(([k,l])=>`<button data-act="sq" data-v="${k}" aria-pressed="${S.sq===k}">${l}</button>`).join("")+
-    `</div><div class="grow"></div>${S.canWrite?`<button class="btn primary" data-act="newPlayer">+ Új játékos</button>`:""}</div>`;
+    `</div><div class="grow"></div>${isAdmin()?`<label class="btn" title="A régi Kispad alkalmazásból mentett adatfájl betöltése">Importálás fájlból<input type="file" id="impFile" accept=".json,application/json" hidden></label>`:""}${S.canWrite?`<button class="btn primary" data-act="newPlayer">+ Új játékos</button>`:""}</div>`;
   if(!ps.length)return h+`<div class="empty">Még nincs játékos ebben a keretben. Az „Új játékos” gombbal adhatsz hozzá.</div>`;
   h+=`<div class="grid">`;
   for(const p of ps){const a=avg(p,SKILLS.map(s=>s.k));
@@ -687,6 +687,35 @@ async function delPlayer(){
   $("#dlgPlayer").close();toast("Játékos törölve.");loadAll();
 }
 
+/* ---------- importálás (régi Kispad) ----------
+   A fájl: {v:1, players:[{id, squad, name, num, birth, foot, pos, list, mlsz_id, mlsz, sk, note, photo:"data:image/jpeg;base64,…"}],
+   matches:[{key, squad, sel:[régi id], lineup:{f, s:[régi id]}, res, note}]}. Többször is lefuttatható: a meglévő játékost frissíti. */
+async function importFile(file){
+  if(!isAdmin()){toast("Importálni csak a vezetőség tud.");return;}
+  let d;try{d=JSON.parse(await file.text());}catch(e){toast("A fájl nem olvasható.");return;}
+  if(!d||d.v!==1||!Array.isArray(d.players)){toast("Ez nem Kispad-mentés.");return;}
+  const prog=m=>{const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);};
+  const norm=x=>(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+  const ex=await sb.from("players").select("id,name,squad,mlsz_id");if(ex.error){toast("Nem sikerült: "+ex.error.message);return;}
+  const byM=Object.fromEntries(ex.data.filter(p=>p.mlsz_id).map(p=>[p.mlsz_id,p.id])),byN=Object.fromEntries(ex.data.map(p=>[norm(p.name),p.id]));
+  const map={},now=new Date().toISOString();let i=0,fail=0;
+  for(const p of d.players){i++;prog(`Importálás… játékos ${i}/${d.players.length}`);
+    const body={squad:p.squad,name:p.name,num:String(p.num||""),birth:p.birth||null,foot:p.foot||"",pos:p.pos||[],list:p.list||"",updated_at:now};
+    if(p.mlsz_id)body.mlsz_id=p.mlsz_id;if(p.mlsz)body.mlsz=p.mlsz;
+    let id=(p.mlsz_id&&byM[p.mlsz_id])||byN[norm(p.name)],r;
+    if(id)r=await sb.from("players").update(body).eq("id",id);else{r=await sb.from("players").insert(body).select("id").single();if(!r.error)id=r.data.id;}
+    if(r.error){fail++;continue;}map[p.id]=id;
+    await sb.from("player_evals").upsert({player_id:id,squad:p.squad,sk:p.sk||{},note:p.note||"",updated_by:S.me,updated_at:now});
+    if(p.photo&&p.photo.startsWith("data:")){const blob=await fetch(p.photo).then(x=>x.blob()),path=p.squad+"/"+id+".jpg";
+      const up=await sb.storage.from("player-photos").upload(path,blob,{upsert:true,contentType:"image/jpeg"});
+      if(!up.error){await sb.from("players").update({photo:path}).eq("id",id);delete S.photoUrls[path];}else fail++;}}
+  const mp=x=>map[x]||"";i=0;
+  for(const m of d.matches||[]){i++;prog(`Importálás… meccs ${i}/${d.matches.length}`);
+    const {error}=await sb.from("squad_matches").upsert({key:m.key,squad:m.squad,sel:(m.sel||[]).map(mp).filter(Boolean),lineup:{f:m.lineup?.f||"3-3-2",s:(m.lineup?.s||[]).map(mp)},res:m.res||"",note:m.note||"",updated_by:S.me,updated_at:now});
+    if(error)fail++;}
+  toast(fail?`Kész, de ${fail} tételt nem sikerült menteni.`:`Kész: ${d.players.length} játékos és ${(d.matches||[]).length} meccs importálva.`);loadAll();
+}
+
 /* ---------- felállás műveletek ---------- */
 function curLineup(m){const lu=m.lineup||{};const s=(lu.s||[]).slice(0,9);while(s.length<9)s.push("");return {f:FORM[lu.f]?lu.f:"3-3-2",s}}
 function autoFill(m){
@@ -738,6 +767,7 @@ document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.tar
 document.addEventListener("change",e=>{
   const t=e.target;
   if(t.id==="pPhoto"&&t.files&&t.files[0]){uploadPhoto(t.files[0]);return;}
+  if(t.id==="impFile"&&t.files&&t.files[0]){importFile(t.files[0]);t.value="";return;}
   if(t.dataset.act==="lineMatch"){S.lineMatch=t.value;S.slot=null;render();}
   else if(t.dataset.act==="lineForm"){const m=mById(S.lineMatch),lu=curLineup(m);lu.f=t.value;S.slot=null;saveMatch(m.id,{lineup:lu});}
   else if(t.dataset.act==="mRes"){const v=t.value.trim().replace(/\s*[-:]\s*/,"–");saveMatch(S.openMatch,{res:v});}
