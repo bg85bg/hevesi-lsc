@@ -37,6 +37,12 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.members where email = lower(auth.jwt() ->> 'email') and role = 'admin')
 $$;
 
+-- Engedélyek a Data API-hoz (akkor is működik, ha az „Automatically expose new tables” ki van kapcsolva).
+-- A tényleges hozzáférést a lenti sorszintű szabályok (RLS) korlátozzák.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.members, public.bookings to authenticated;
+grant execute on function public.is_member(), public.is_admin() to authenticated;
+
 alter table public.members  enable row level security;
 alter table public.bookings enable row level security;
 
