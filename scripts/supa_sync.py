@@ -1,9 +1,11 @@
 """Csapatom-adatok szinkronja a Supabase-be (a GitHub Action futtatja a build.py után).
 - Csapatkeretek az MLSZ adatbankból: új játékosokat felvesz (mlsz_id alapján), a meglévőket nem írja felül,
   csak az MLSZ-statisztikájukat frissíti.
+- Akinek még nincs fotója, annak az MLSZ-adatlapján lévő igazolványképét a privát player-photos tárhelyre teszi
+  (az edző által feltöltött képet nem írja felül).
 - Lejátszott meccsek hivatalos jegyzőkönyvei (kezdők, cserék, gólok, lapok) a match_reports táblába.
 Kell hozzá: SUPABASE_URL és SUPABASE_SECRET_KEY környezeti változó. Ha nincs kulcs, nem csinál semmit."""
-import os, re, sys, json, html, datetime, urllib.request, urllib.parse
+import os, re, sys, json, html, datetime, subprocess, urllib.request, urllib.error, urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build import get, clean, TEAMS
 
@@ -12,6 +14,7 @@ KEY = os.environ.get('SUPABASE_SECRET_KEY', '')
 SQUAD_OF = {'F2': 'FELNOTT', 'KUPA': 'FELNOTT', 'MAKL': 'FELNOTT', 'U14R': 'U14', 'U14H': 'U14', 'U13R': 'U13', 'U13H': 'U13'}
 PRIO = ['U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U21', 'FELNOTT', 'F3', 'NOI']   # több keretben: a legfiatalabb nyer
 sq = lambda c: SQUAD_OF.get(c, c)
+PHOTO = {}   # mlsz játékos-id → igazolványkép URL (a player_stats tölti, az adatlapról)
 NOW = ''
 
 
@@ -53,6 +56,9 @@ def lineup(url, team):
 
 def player_stats(pid):
     t = get(f'https://adatbank.mlsz.hu/player/{pid}.html')
+    m = re.search(r'src="(https://adatbank\.mlsz\.hu/img/SzemelyFoto/Foto/\d+/\d+\.jpg)"', t)
+    if m:
+        PHOTO[pid] = m.group(1)
     t2 = re.sub(r'<script.*?</script>|<style.*?</style>', '', t, flags=re.S)
     L = [l.strip() for l in html.unescape(re.sub(r'<[^>]+>', '\n', t2)).split('\n') if l.strip()]
     seasons, i = [], 0
@@ -125,6 +131,27 @@ def main():
     if new:
         api('POST', 'players?on_conflict=mlsz_id', new, 'resolution=ignore-duplicates')
     print(f'Játékosok: {len(new)} új, {upd} frissített statisztika', file=sys.stderr)
+    # 1b) fotó az MLSZ-ből, akinek még nincs
+    added = 0
+    for p in api('GET', 'players?select=id,squad,mlsz_id&photo=eq.&mlsz_id=not.is.null') or []:
+        src = PHOTO.get(p['mlsz_id'])
+        if not src:
+            continue
+        r = subprocess.run(['curl', '-sS', '-f', '-L', '--max-time', '30', src], capture_output=True)
+        if r.returncode != 0 or not r.stdout.startswith(b'\xff\xd8'):   # nincs kép (404) vagy nem JPEG
+            continue
+        path = f"{p['squad']}/{p['id']}.jpg"
+        h = {'apikey': KEY, 'Content-Type': 'image/jpeg', 'x-upsert': 'true'}
+        if KEY.startswith('eyJ'):
+            h['Authorization'] = 'Bearer ' + KEY
+        try:
+            urllib.request.urlopen(urllib.request.Request(f'{URL}/storage/v1/object/player-photos/{path}', data=r.stdout, method='POST', headers=h), timeout=60).read()
+        except urllib.error.HTTPError as e:
+            print('Fotó-feltöltési hiba:', e.code, e.read().decode()[:200], file=sys.stderr)
+            break
+        api('PATCH', 'players?id=eq.' + p['id'], {'photo': path})
+        added += 1
+    print(f'Fotók: {added} új az MLSZ-ből', file=sys.stderr)
     # 2) jegyzőkönyvek
     F = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'klub.json')))
     done = {r['key'] for r in api('GET', 'match_reports?select=key&status=eq.played') or []}
