@@ -263,7 +263,8 @@ function matchesOn(d){
   const out=[];
   for(const c of teamCodes()){const t=S.teams[c];for(const f of t.fixtures||[]){
     if(f.d!==d||f.st==="postponed"||!VENUE[f.v]||!f.t)continue;const s=mins(f.t);
-    out.push({match:true,c,f,t,pitch:venuePitch(f.v,c),part:"full",s:s-30,e:s+(t.dur||100),label:"Meccs: "+opp(t,f)});}}
+    const ov=(S.overrides||{})[c+"|"+f.d];
+    out.push({match:true,c,f,t,pitch:ov?.pitch||venuePitch(f.v,c),part:ov?.part||"full",moved:!!ov,s:s-30,e:s+(t.dur||100),label:"Meccs: "+opp(t,f)});}}
   return out;
 }
 function itemsOn(d,excludeId){
@@ -333,12 +334,12 @@ function vPitches(){
     for(const p of PITCHES){const its=items.filter(x=>x.pitch===p.id);if(!its.length)continue;
       h+=`<div class="lab">${esc(p.n)}</div><div class="lane">${ticks.map(x=>`<span class="tick" style="left:${pct(x*60)}%"></span>`).join("")}`;
       for(const x of its){const top=x.part==="B"?"50%":"0",ht=x.part==="full"?"100%":"50%";
-        h+=`<button class="blk ${x.match?"match":""} ${cl.has(x)?"clash":""}" style="--h:${HUE[x.c]??160};left:${pct(x.s)}%;width:${pct(x.e)-pct(x.s)}%;top:${top};height:${ht}" title="${hhmm(x.s)}–${hhmm(x.e)} ${esc(itemName(x))} ${esc(x.label)}" ${x.b?`data-act="editBooking" data-id="${x.b.id}" data-d="${d}"`:`data-act="noop"`}>${esc((x.cs||[x.c]).join("+"))}</button>`;}
+        h+=`<button class="blk ${x.match?"match":""} ${cl.has(x)?"clash":""}" style="--h:${HUE[x.c]??160};left:${pct(x.s)}%;width:${pct(x.e)-pct(x.s)}%;top:${top};height:${ht}" title="${hhmm(x.s)}–${hhmm(x.e)} ${esc(itemName(x))} ${esc(x.label)}" ${x.b?`data-act="editBooking" data-id="${x.b.id}" data-d="${d}"`:`data-act="editMatch" data-c="${x.c}" data-d="${d}"`}>${esc((x.cs||[x.c]).join("+"))}</button>`;}
       h+=`</div>`;}
     h+=`<div class="hours">${ticks.map(x=>`<span style="left:${pct(x*60)}%">${x}</span>`).join("")}</div></div><div class="items">`;
     for(const x of items){const by=x.b?.by?S.names[x.b.by]||"":"";
-      h+=`<button class="it" ${x.b?`data-act="editBooking" data-id="${x.b.id}" data-d="${d}"`:`data-act="noop"`}><span class="tm">${hhmm(x.s)}–${hhmm(x.e)}</span><span class="ds">${(x.cs||[x.c]).map(tchip).join(" ")} ${x.match?`<b>Meccs</b> – ${esc(opp(x.t,x.f))}`:"Edzés"}
-        <small>${esc(PITCHES.find(p=>p.id===x.pitch)?.n||x.pitch)} · ${PART[x.part]}${x.b&&x.b.kind==="weekly"?" · hetente":""}${by?" · beírta: "+esc(by):""}${x.label&&!x.match?" · "+esc(x.label):""}</small></span>${cl.has(x)?`<span class="chip bad">ütközik</span>`:""}</button>`;}
+      h+=`<button class="it" ${x.b?`data-act="editBooking" data-id="${x.b.id}" data-d="${d}"`:`data-act="editMatch" data-c="${x.c}" data-d="${d}"`}><span class="tm">${hhmm(x.s)}–${hhmm(x.e)}</span><span class="ds">${(x.cs||[x.c]).map(tchip).join(" ")} ${x.match?`<b>Meccs</b> – ${esc(opp(x.t,x.f))}`:"Edzés"}
+        <small>${esc(PITCHES.find(p=>p.id===x.pitch)?.n||x.pitch)} · ${PART[x.part]}${x.moved?" · kézzel beállított pálya":""}${x.b&&x.b.kind==="weekly"?" · hetente":""}${by?" · beírta: "+esc(by):""}${x.label&&!x.match?" · "+esc(x.label):""}</small></span>${cl.has(x)?`<span class="chip bad">ütközik</span>`:""}</button>`;}
     h+=`</div></section>`;}
   return h;
 }
@@ -420,6 +421,30 @@ function renderDlg(){
   const b2=box.querySelector(".body");if(b2)b2.scrollTop=sc;if(act&&document.getElementById(act)&&/^(bNote|bTitle)$/.test(act)){const el=document.getElementById(act);el.focus();el.setSelectionRange?.(el.value.length,el.value.length);}
 }
 
+function openMatch(c,d){
+  const t=S.teams[c];const f=(t?.fixtures||[]).find(x=>x.d===d&&VENUE[x.v]);if(!f)return;
+  const ov=(S.overrides||{})[c+"|"+d];
+  S.mdraft={c,d,f,pitch:ov?.pitch||venuePitch(f.v,c),part:ov?.part||"full",has:!!ov};renderMatchDlg();const g=$("#dlg");if(!g.open)g.showModal();
+}
+function renderMatchDlg(){
+  const m=S.mdraft,t=S.teams[m.c],ok=isAdmin()||allowedCodes().includes(m.c),dis=ok?"":"disabled",p=PITCHES.find(x=>x.id===m.pitch);
+  const s=mins(m.f.t),cand={pitch:m.pitch,part:m.part,s:s-30,e:s+(t.dur||100)};
+  const cl=itemsOn(m.d).filter(x=>!(x.match&&x.c===m.c)).filter(x=>overlap(cand,x));
+  $("#dlgIn").innerHTML=`<header><div class="grow"><h2>Hazai meccs pályája</h2><div class="small muted">${tchip(m.c)} ${esc(opp(t,m.f))} · ${short(m.d)} ${WS[dow(m.d)]} ${esc(m.f.t)} · ${esc(m.f.v)}</div></div><button class="x" data-act="close" aria-label="Bezárás">×</button></header><div class="body">
+  <div class="small muted">Az MLSZ adatbank csak a sporttelepet adja meg, a pályát nem. Alapból a felnőttek a füves nagypályán, a többiek a nagy műfüvesen játszanak. Itt átállíthatod, és a pályanaptár ütközésfigyelése ezzel számol.</div>
+  <div class="fields"><label class="field">Pálya<select data-mf="pitch" ${dis}>${PITCHES.filter(x=>pitchOk(x,m.c)).map(x=>`<option value="${x.id}" ${m.pitch===x.id?"selected":""}>${esc(x.n)}</option>`).join("")}</select></label>
+  ${p&&p.halves?`<label class="field">Pályarész<select data-mf="part" ${dis}>${Object.entries(PART).map(([k,v])=>`<option value="${k}" ${m.part===k?"selected":""}>${v}</option>`).join("")}</select></label>`:""}</div>
+  ${cl.length?`<div class="clashbox"><b>Ütközik:</b><br>${cl.map(x=>`${hhmm(x.s)}–${hhmm(x.e)} · ${esc(itemName(x))} ${x.match?"(meccs)":""} · ${PART[x.part]}`).join("<br>")}</div>`:`<div class="okbox">Ezen a pályán szabad az idősáv (bemelegítéssel együtt).</div>`}
+  ${ok?"":`<div class="note">A meccs pályáját a vezetőség és a(z) ${esc(t.name)} edzője állíthatja.</div>`}
+  </div><footer>${ok&&m.has?`<button class="btn" data-act="resetMatch">Visszaállítás alapra</button>`:""}<span class="grow"></span><button class="btn" data-act="close">Mégse</button>${ok?`<button class="btn primary" data-act="saveMatch">Mentés</button>`:""}</footer>`;
+}
+async function saveMatch(reset){
+  const m=S.mdraft,key=m.c+"|"+m.d;let error;
+  if(reset)({error}=await sb.from("match_overrides").delete().eq("key",key));
+  else{const p=PITCHES.find(x=>x.id===m.pitch);({error}=await sb.from("match_overrides").upsert({key,team:m.c,pitch:m.pitch,part:p.halves?m.part:"full"}));}
+  if(error){toast(/match_overrides|relation/i.test(error.message)?"Előbb futtasd le a 3. frissítő SQL-t a Supabase-ben.":/row-level|permission/i.test(error.message)?"Ehhez nincs jogosultságod.":"Nem sikerült: "+error.message);return;}
+  $("#dlg").close();toast(reset?"Visszaállítva.":"Meccs pályája mentve.");loadOverrides();
+}
 async function saveBooking(){
   const dr=S.draft;const p=PITCHES.find(x=>x.id===dr.pitch);const part=p.halves?dr.part:"full";
   if(!pitchOk(p,dr.team)){toast(p.n+": ezt a pályát csak a felnőtt csapat használja.");return;}
@@ -439,7 +464,12 @@ async function delBooking(one){
   if(err){toast("Nem sikerült törölni: "+err.message);return;}
   $("#dlg").close();toast("Törölve.");loadBookings();
 }
+async function loadOverrides(){
+  const {data,error}=await sb.from("match_overrides").select("*");
+  S.overrides=error?{}:Object.fromEntries(data.map(r=>[r.key,r]));render();
+}
 async function loadBookings(){
+  if(!S.overrides)loadOverrides();
   const {data,error}=await sb.from("bookings").select("*");
   if(error){toast("A foglalások nem tölthetők be: "+error.message);return;}
   S.bookings=data.map(fromRow);S.bLoaded=true;render();if(S.draft&&$("#dlg").open)renderDlg();
@@ -454,7 +484,7 @@ async function startSession(user){
   S.me=(user.email||"").toLowerCase();await loadMembers();render();
   if(!S.member)return;
   await loadBookings();
-  if(!chan)chan=sb.channel("bookings").on("postgres_changes",{event:"*",schema:"public",table:"bookings"},()=>loadBookings()).subscribe();
+  if(!chan)chan=sb.channel("bookings").on("postgres_changes",{event:"*",schema:"public",table:"bookings"},()=>loadBookings()).on("postgres_changes",{event:"*",schema:"public",table:"match_overrides"},()=>loadOverrides()).subscribe();
 }
 
 /* ---------- események ---------- */
@@ -467,6 +497,9 @@ document.addEventListener("click",async e=>{
   else if(a==="newBooking"){if(!allowedCodes().length){toast("Még nincs csapat hozzárendelve hozzád. Kérd a vezetőséget, hogy a Felhasználók fülön állítsa be.");return;}S.canWrite=!!S.member;openBooking(null,t.dataset.d);}
   else if(a==="editBooking"){const b=S.bookings.find(x=>x.id===t.dataset.id);S.canWrite=canEditB(b);openBooking(t.dataset.id,t.dataset.d);}
   else if(a==="close")t.closest("dialog").close();
+  else if(a==="editMatch")openMatch(t.dataset.c,t.dataset.d);
+  else if(a==="saveMatch")saveMatch(false);
+  else if(a==="resetMatch")saveMatch(true);
   else if(a==="withTeam"){const c=t.dataset.c,l=S.draft.with,i=l.indexOf(c);i>=0?l.splice(i,1):l.push(c);renderDlg();}
   else if(a==="dow"){const n=Number(t.dataset.v),l=S.draft.dows,i=l.indexOf(n);if(i>=0){if(l.length>1)l.splice(i,1)}else l.push(n);renderDlg();}
   else if(a==="saveBooking")saveBooking();
@@ -484,6 +517,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("change",async e=>{const t=e.target;
   if(t.dataset.act==="role"){const {error}=await sb.from("members").update({role:t.value}).eq("email",t.dataset.email);if(error)toast("Nem sikerült: "+error.message);else toast("Szerep módosítva.");await loadMembers();render();}
+  else if(t.dataset.mf&&S.mdraft){S.mdraft[t.dataset.mf]=t.value;if(!PITCHES.find(x=>x.id===S.mdraft.pitch).halves)S.mdraft.part="full";renderMatchDlg();}
   else if(t.dataset.f&&S.draft){const f=t.dataset.f;S.draft[f]=t.type==="checkbox"?t.checked:t.value;
     if(f==="date"&&!S.draft.id)S.draft.dows=[dow(t.value)];
     if(f==="team"){const cur=PITCHES.find(x=>x.id===S.draft.pitch);if(cur&&!pitchOk(cur,t.value)){S.draft.pitch="mufu";}}
@@ -506,7 +540,7 @@ document.addEventListener("submit",async e=>{
   if(e.target.id==="addMember"){e.preventDefault();const email=$("#mEmail").value.trim().toLowerCase(),name=$("#mName").value.trim(),role=$("#mRole").value;
     const {error}=await sb.from("members").upsert({email,name,role});if(error){toast("Nem sikerült: "+error.message);return;}toast("Felvéve: "+email);await loadMembers();render();}
 });
-$("#dlg").addEventListener("close",()=>{S.draft=null;S.canWrite=!!S.member;});
+$("#dlg").addEventListener("close",()=>{S.draft=null;S.mdraft=null;S.canWrite=!!S.member;});
 
 /* ---------- indulás ---------- */
 render();
