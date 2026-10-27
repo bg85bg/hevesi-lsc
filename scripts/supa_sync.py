@@ -130,8 +130,11 @@ def main():
     done = {r['key'] for r in api('GET', 'match_reports?select=key&status=eq.played') or []}
     rows = []
     for code, name, org, comp, tid, lname, dur, tab in TEAMS:
-        for f in F['teams'].get(code, {}).get('fixtures', []):
-            key = f'{code}|{f["d"]}'
+        seen = {}
+        for f in sorted(F['teams'].get(code, {}).get('fixtures', []), key=lambda f: (f['d'], f.get('t') or '')):
+            # tornanapon (női csapat) egy napra több meccs is jut: a második kulcsa 'kód|dátum#2'
+            seen[f['d']] = seen.get(f['d'], 0) + 1
+            key = f'{code}|{f["d"]}' + (f'#{seen[f["d"]]}' if seen[f['d']] > 1 else '')
             if f.get('st') != 'played' or not f.get('u') or key in done:
                 continue
             lu = lineup(f['u'], tid)
@@ -142,9 +145,14 @@ def main():
                                  'r': sum(1 for e, _ in x['ev'] if 'red' in e), 'sw': [int(m) for e, m in x['ev'] if e == 'swap']} for x in arr]
             rows.append({'key': key, 'squad': sq(code), 'mlsz_id': f['u'].rsplit('/', 1)[-1].split('.')[0], 'url': f['u'],
                          'status': 'played', 'start': conv(lu['start']), 'subs': conv(lu['subs']), 'updated_at': NOW})
+    bad = 0
     for n in range(0, len(rows), 50):
-        api('POST', 'match_reports?on_conflict=key', rows[n:n + 50], 'resolution=merge-duplicates')
-    print(f'Jegyzőkönyvek: {len(rows)} új', file=sys.stderr)
+        try:
+            api('POST', 'match_reports?on_conflict=key', rows[n:n + 50], 'resolution=merge-duplicates')
+        except urllib.error.HTTPError as e:
+            bad += len(rows[n:n + 50])
+            print('Jegyzőkönyv-mentési hiba:', e.code, e.read().decode()[:300], file=sys.stderr)
+    print(f'Jegyzőkönyvek: {len(rows) - bad} új' + (f', {bad} hibás' if bad else ''), file=sys.stderr)
 
 
 if __name__ == '__main__':

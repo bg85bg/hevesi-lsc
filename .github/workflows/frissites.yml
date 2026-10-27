@@ -34,6 +34,7 @@ jobs:
 
       - name: Csapatom-adatok szinkronja (keretek, jegyzőkönyvek, statisztikák)
         if: github.event_name != 'push' && env.SUPABASE_SECRET_KEY != ''
+        continue-on-error: true
         run: python3 -u scripts/supa_sync.py
 
       - name: Friss adatok mentése a tárolóba

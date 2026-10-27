@@ -794,7 +794,8 @@ function buildMatches(){
   const byMlsz=Object.fromEntries(S.players.filter(p=>p.mlsz_id).map(p=>[p.mlsz_id,p.id]));
   for(const [c,t] of Object.entries(K.teams)){const sq=sqOf(c);if(!SQN[sq])continue;
     TEAMS[c]={short:t.name,long:t.league,minYear:minYearOf(sq),squad:sq};
-    for(const f of t.fixtures||[]){const key=c+"|"+f.d,row=S.rows[key],rep=S.reports[key],home=f.hid===t.tid;
+    const seen={};
+    for(const f of (t.fixtures||[]).slice().sort((a,b)=>(a.d+(a.t||"")).localeCompare(b.d+(b.t||"")))){seen[f.d]=(seen[f.d]||0)+1;const key=c+"|"+f.d+(seen[f.d]>1?"#"+seen[f.d]:""),row=S.rows[key],rep=S.reports[key],home=f.hid===t.tid;
       const res=f.st==="played"?(home?f.hg+"–"+f.ag:f.ag+"–"+f.hg):(row?.res||"");
       const conv=a=>(a||[]).map(x=>({...x,p:byMlsz[x.id]||""}));
       S.matches.push({id:key,team:c,date:f.d,time:f.t,home,opp:home?f.a:f.h,venue:f.v,note:row?.note||"",res,manualRes:row?.res||"",
