@@ -431,7 +431,7 @@ function renderDlg(){
   <label class="field" style="max-width:200px">Utolsó nap<input id="bUntil" type="date" data-f="until" value="${esc(dr.until)}" ${dis}></label><div class="small muted">${occ.length} alkalom lesz beírva.</div>`:""}`}
   ${dr.id&&dr.weekly?`<label class="field" style="max-width:200px">Utolsó nap<input id="bUntil" type="date" data-f="until" value="${esc(dr.until)}" ${dis}></label>`:""}
   <label class="field">Megjegyzés<input id="bNote" data-f="note" value="${esc(dr.note)}" placeholder="pl. felmérés, taktikai edzés" ${dis}></label>
-  ${bad?`<div class="clashbox">A vége legyen később, mint a kezdés.</div>`:cl.length?`<div class="clashbox"><b>Ütközés ${cl.length} alkalommal:</b><br>${cl.slice(0,6).map(({d,x})=>`${short(d)} ${WS[dow(d)]} ${hhmm(x.s)}–${hhmm(x.e)} · ${esc(itemName(x))} ${x.match?"(meccs)":""} · ${PART[x.part]}`).join("<br>")}${cl.length>6?"<br>…":""}<br>Válassz másik időpontot, pályát vagy pályarészt.</div>`:occ.length?`<div class="okbox">Szabad a pálya${occ.length>1?` mind a ${occ.length} alkalommal`:""}.</div>`:""}
+  ${bad?`<div class="clashbox">A vége legyen később, mint a kezdés.</div>`:cl.length?`<div class="clashbox"><b>Ütközés ${cl.length} alkalommal:</b><br>${cl.slice(0,6).map(({d,x})=>`${short(d)} ${WS[dow(d)]} ${hhmm(x.s)}–${hhmm(x.e)} · ${esc(itemName(x))} ${x.match?"(meccs)":""} · ${PART[x.part]}`).join("<br>")}${cl.length>6?"<br>…":""}<br>Válassz másik időpontot, pályát vagy pályarészt.${joinable(dr,cl)}</div>`:occ.length?`<div class="okbox">Szabad a pálya${occ.length>1?` mind a ${occ.length} alkalommal`:""}.</div>`:""}
   </div><footer>`;
   if(S.canWrite&&dr.id){
     if(S.confirm==="del")h+=`<span class="small">Biztosan törlöd?</span>${dr.weekly&&dr.occ?`<button class="btn danger" data-act="delOne">Csak ${short(dr.occ)}</button>`:""}<button class="btn danger" data-act="delAll">${dr.weekly?"Az egész sorozatot":"Igen, törlés"}</button><button class="btn" data-act="noDel">Mégse</button>`;
@@ -464,6 +464,23 @@ async function saveMatch(reset){
   else{const p=PITCHES.find(x=>x.id===m.pitch);({error}=await sb.from("match_overrides").upsert({key,team:sq(m.c),pitch:m.pitch,part:p.halves?m.part:"full"}));}
   if(error){toast(/match_overrides|relation/i.test(error.message)?"Előbb futtasd le a 3. frissítő SQL-t a Supabase-ben.":/row-level|permission/i.test(error.message)?"Ehhez nincs jogosultságod.":"Nem sikerült: "+error.message);return;}
   $("#dlg").close();toast(reset?"Visszaállítva.":"Meccs pályája mentve.");loadOverrides();
+}
+function joinable(dr,cl){
+  if(dr.id||PSEUDO[dr.team])return "";
+  const seen=new Set(),out=[];
+  for(const {x} of cl){if(!x.b||x.match||seen.has(x.b.id)||PSEUDO[x.b.team])continue;seen.add(x.b.id);
+    if((x.cs||[]).includes(dr.team))continue;
+    const who=team(x.b.team).name,ok=canEditB(x.b);
+    out.push(ok?`<button class="btn" style="margin-top:8px;display:block" data-act="joinB" data-id="${x.b.id}">Összevonás: ${esc(team(dr.team).name)} edzzen együtt a(z) ${esc(who)} edzéssel (${esc(x.b.start)}–${esc(x.b.end)})</button>`
+      :`<div style="margin-top:8px">Ha együtt edzenek a(z) ${esc(who)} csapattal: kérd ${esc(S.names[x.b.by]||"az edzés beíróját")} vagy a vezetőséget, hogy a(z) ${esc(who)} edzésnél jelölje be a(z) ${esc(team(dr.team).name)} korosztályt.</div>`);}
+  return out.join("");
+}
+async function joinBooking(id){
+  const b=S.bookings.find(x=>x.id===id),add=S.draft.team;if(!b)return;
+  const w=[...new Set([...(b.with||[]),add])].filter(c=>c!==b.team);
+  const {error}=await sb.from("bookings").update({with_teams:w}).eq("id",id);
+  if(error){toast("Nem sikerült: "+error.message);return;}
+  $("#dlg").close();toast(team(add).name+" hozzáadva: együtt edz a(z) "+team(b.team).name+" csapattal.");loadBookings();
 }
 async function saveBooking(){
   const dr=S.draft;const p=PITCHES.find(x=>x.id===dr.pitch);const part=p.halves?dr.part:"full";
@@ -517,6 +534,7 @@ document.addEventListener("click",async e=>{
   else if(a==="newBooking"){if(!allowedCodes().length){toast("Még nincs korosztály hozzárendelve hozzád. Kérd a vezetőséget, hogy a Felhasználók fülön állítsa be.");return;}S.canWrite=!!S.member;openBooking(null,t.dataset.d);}
   else if(a==="editBooking"){const b=S.bookings.find(x=>x.id===t.dataset.id);S.canWrite=canEditB(b);openBooking(t.dataset.id,t.dataset.d);}
   else if(a==="close")t.closest("dialog").close();
+  else if(a==="joinB")joinBooking(t.dataset.id);
   else if(a==="editMatch")openMatch(t.dataset.c,t.dataset.d);
   else if(a==="saveMatch")saveMatch(false);
   else if(a==="resetMatch")saveMatch(true);
