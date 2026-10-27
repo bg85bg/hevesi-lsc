@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NEO24-Hevesi LSC – meccsek és tabellák</title>
+<meta name="description" content="A NEO24-Hevesi LSC összes csapatának menetrendje, eredményei és tabellái, kétnaponta frissítve az MLSZ adatbankból.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+html{color-scheme:light}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px)}
+footer.site{padding-block:24px 40px;color:var(--muted);font-size:13px}
+footer.site a{color:var(--accent)}
+/* Layout: sticky header + tabs over one work column; the pitch week is a stack of day cards, each a timeline with one lane per pitch. */
+:root{
+  --bg:#f2f5f0; --surface:#ffffff; --surface-2:#e7ece4; --fg:#16201a; --muted:#56635a; --line:#d2dacd;
+  --accent:#1d6b39; --accent-fg:#ffffff; --accent-soft:#dcebdf;
+  --good:#1b7a3d; --warn:#9a6a00; --bad:#bf3328; --warn-soft:#f6ecd2; --bad-soft:#f7dedb;
+  --blk-l:40%; --blk-s:52%; --blk-fg:#ffffff; --match:#2a3530;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1310; --surface:#161d18; --surface-2:#1f2822; --fg:#e4ebe5; --muted:#99a69c; --line:#2b362e;
+  --accent:#55c47a; --accent-fg:#06120a; --accent-soft:#1d3324;
+  --good:#62d38e; --warn:#e9b440; --bad:#ff7d70; --warn-soft:#3a2f12; --bad-soft:#3d1c19;
+  --blk-l:62%; --blk-s:55%; --blk-fg:#0b120d; --match:#c9d3cc;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1310; --surface:#161d18; --surface-2:#1f2822; --fg:#e4ebe5; --muted:#99a69c; --line:#2b362e;
+  --accent:#55c47a; --accent-fg:#06120a; --accent-soft:#1d3324;
+  --good:#62d38e; --warn:#e9b440; --bad:#ff7d70; --warn-soft:#3a2f12; --bad-soft:#3d1c19;
+  --blk-l:62%; --blk-s:55%; --blk-fg:#0b120d; --match:#c9d3cc;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;padding-block:12px 4px;flex-wrap:wrap}
+.brand h1{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-height:1}
+.brand h1 span{color:var(--accent)}
+.brand .sub{color:var(--muted);font-size:13px}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px 9px;font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+main{padding-block:18px 60px}
+h2{font-family:var(--display);font-weight:700;font-size:22px;margin:0;text-wrap:balance}
+h3{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.muted{color:var(--muted)} .small{font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.toolbar .grow{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 11px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 13px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap;line-height:1.6;border:1px solid var(--line);color:var(--muted)}
+.chip.bad{color:var(--bad);background:var(--bad-soft);border-color:transparent}
+.chip.ok{color:var(--good);background:var(--accent-soft);border-color:transparent}
+.tchip{display:inline-flex;align-items:center;border-radius:6px;padding:0 7px;font-size:12px;font-weight:700;line-height:1.7;white-space:nowrap;background:hsl(var(--h) var(--blk-s) var(--blk-l));color:var(--blk-fg)}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:28px 18px;text-align:center;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:8px 10px}
+select.fsel{border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:var(--surface);font-size:14px;max-width:100%}
+
+/* overview */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.tc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:6px;text-align:left;width:100%}
+.tc:hover{border-color:var(--accent)}
+.tc .hd{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.tc .nm{font-family:var(--display);font-weight:700;font-size:20px;line-height:1.1}
+.tc .lg{font-size:12px;color:var(--muted)}
+.pos{font-family:var(--display);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos small{font-size:13px;color:var(--muted);font-weight:500}
+.ln{font-size:13px;display:flex;gap:6px;align-items:baseline;min-width:0}
+.ln span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ln .k{color:var(--muted);flex:none;width:62px}
+.res{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
+.res.w{color:var(--good)} .res.l{color:var(--bad)} .res.d{color:var(--muted)}
+.form{display:inline-flex;gap:3px}
+.form b{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;font-size:10px;font-weight:700;color:#fff}
+.form .w{background:var(--good)} .form .d{background:var(--muted)} .form .l{background:var(--bad)}
+
+/* pitch week */
+.day{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.day.today{border-color:var(--accent)}
+.dayhd{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.dayhd b{font-family:var(--display);font-size:20px}
+.tl{display:grid;grid-template-columns:86px minmax(0,1fr);row-gap:4px}
+.tl .lab{font-size:12px;color:var(--muted);align-self:center;padding-right:6px;line-height:1.15}
+.lane{position:relative;height:30px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.lane .tick{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.blk{position:absolute;border-radius:4px;font-size:11px;font-weight:700;line-height:1;display:flex;align-items:center;padding:0 4px;overflow:hidden;white-space:nowrap;background:hsl(var(--h) var(--blk-s) var(--blk-l));color:var(--blk-fg);border:0;cursor:pointer}
+.blk.match{background:repeating-linear-gradient(135deg,var(--match) 0 6px,transparent 6px 9px),hsl(var(--h) var(--blk-s) var(--blk-l))}
+.blk.clash{outline:2px solid var(--bad);outline-offset:-1px}
+.hours{position:relative;height:16px;font-size:10px;color:var(--muted);grid-column:2}
+.hours span{position:absolute;transform:translateX(-50%)}
+.items{margin-top:8px;display:flex;flex-direction:column}
+.it{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:14px;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0;width:100%}
+.it .tm{font-variant-numeric:tabular-nums;font-weight:600}
+.it .ds{min-width:0}
+.it .ds small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* lists / tables */
+.mlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.m{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 14px;border-top:1px solid var(--line)}
+.m:first-child{border-top:0}
+.m .d{font-family:var(--display);text-align:center;line-height:1.05}
+.m .d b{font-size:22px;display:block;font-variant-numeric:tabular-nums}
+.m .d span{font-size:11px;text-transform:uppercase;color:var(--muted)}
+.m .o{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m .meta{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.month{margin:18px 0 6px}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+th{font-weight:600;font-size:12px;color:var(--muted);background:var(--surface-2)}
+td.l,th.l{text-align:left}
+tr.ours td{background:var(--accent-soft);font-weight:600}
+.rlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.rl{display:grid;grid-template-columns:52px minmax(0,1fr) 52px minmax(0,1fr);gap:8px;align-items:center;padding:7px 12px;border-top:1px solid var(--line);font-size:14px}
+.rl:first-child{border-top:0}
+.rl .h{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rl .a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rl .sc{text-align:center;font-family:var(--display);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.rl.ours{background:var(--accent-soft)}
+details.more summary{cursor:pointer;color:var(--accent);font-weight:600;margin:12px 0 8px}
+
+/* dialog */
+dialog{border:0;border-radius:14px;padding:0;background:var(--surface);color:var(--fg);width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(8,14,10,.55)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+.dlg header{padding:14px 18px 10px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.dlg header .grow{flex:1;min-width:0}
+.dlg .body{padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.dlg footer{padding:10px 18px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dlg footer .grow{flex:1}
+.x{border:0;background:none;font-size:22px;line-height:1;color:var(--muted);padding:2px 6px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--bg);color:var(--fg);font-size:15px;width:100%}
+.dows{display:flex;gap:4px;flex-wrap:wrap}
+.dows button{width:40px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-weight:600;font-size:13px}
+.dows button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.clashbox{border-radius:8px;padding:8px 10px;background:var(--bad-soft);color:var(--bad);font-size:13px}
+.okbox{border-radius:8px;padding:8px 10px;background:var(--accent-soft);color:var(--good);font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;z-index:50;max-width:calc(100vw - 32px)}
+@media (max-width:560px){.tl{grid-template-columns:62px minmax(0,1fr)} .it{grid-template-columns:78px minmax(0,1fr) auto}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>NEO24-Hevesi LSC <span>meccsek</span></h1>
+      <div class="sub">2026/2027 · 14 csapat</div>
+      <div class="sub" id="syncinfo"></div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="attekintes" aria-selected="true">Áttekintés</button>
+      <button role="tab" data-tab="meccsek" aria-selected="false">Meccsek</button>
+      <button role="tab" data-tab="tabellak" aria-selected="false">Tabellák</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="main"><div class="empty">Betöltés…</div></main>
+<footer class="site wrap">Forrás: <a href="https://adatbank.mlsz.hu" rel="noopener">MLSZ adatbank</a>. Az adatok kétnaponta automatikusan frissülnek. A tabellák nem hivatalosak, a lejátszott meccsek eredményeiből számoltak.</footer>
+<script>
+"use strict";
+
+
+const ORDER=["F2","F3","KUPA","MAKL","U21","U17","U16","U15","U14R","U14H","U13R","U13H","U12","NOI"];
+const HUE={F2:150,F3:120,KUPA:95,MAKL:70,U21:200,U17:225,U16:250,U15:275,U14R:300,U14H:325,U13R:20,U13H:40,U12:0,NOI:180};
+const PITCHES=[{id:"fuves",n:"Füves nagypálya",halves:true},{id:"mufu",n:"Műfüves pálya",halves:true},{id:"kis",n:"Kispálya / grund",halves:false},{id:"edzo",n:"Edzőpálya",halves:false}];
+const VENUE={"Hevesi LSC Sporttelep":"fuves","Heves Tartalékpálya":"edzo"};
+const PART={full:"teljes pálya",A:"A fél",B:"B fél"};
+const WD=["vasárnap","hétfő","kedd","szerda","csütörtök","péntek","szombat"],WS=["V","H","K","Sze","Cs","P","Szo"];
+const MON=["január","február","március","április","május","június","július","augusztus","szeptember","október","november","december"];
+const H0=8,H1=22;
+const S={tab:"attekintes",teams:{},leagues:{},tLoaded:false,at:"",mTeam:"ALL",mWhen:"next",tTeam:"U13H"};
+const hashTab=location.hash.slice(1);if(["attekintes","meccsek","tabellak"].includes(hashTab))S.tab=hashTab;
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const ds=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const todayStr=()=>ds(new Date());
+const dObj=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=dObj(s);d.setDate(d.getDate()+n);return ds(d)};
+const dow=s=>dObj(s).getDay();
+const mins=t=>{const [h,m]=(t||"0:0").split(":").map(Number);return h*60+(m||0)};
+const hhmm=m=>pad(Math.floor(m/60))+":"+pad(m%60);
+const monday=s=>{const w=dow(s);return addDays(s,w===0?-6:1-w)};
+const short=d=>{const x=dObj(d);return (x.getMonth()+1)+"."+pad(x.getDate())+"."};
+let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3500)}
+const team=c=>S.teams[c]||{name:c};
+const tchip=c=>`<span class="tchip" style="--h:${HUE[c]??160}">${esc(team(c).name||c)}</span>`;
+const teamCodes=()=>ORDER.filter(c=>S.teams[c]);
+
+/* ---------- meccsek ---------- */
+function ourScore(t,f){if(f.st!=="played")return null;const home=f.hid===t.tid;return home?[f.hg,f.ag]:[f.ag,f.hg]}
+function resHtml(t,f){const s=ourScore(t,f);if(!s)return f.st==="postponed"?`<span class="chip">elmaradt</span>`:"";const c=s[0]>s[1]?"w":s[0]<s[1]?"l":"d";return `<span class="res ${c}">${s[0]}–${s[1]}</span>`}
+function allFixtures(){const out=[];for(const c of teamCodes()){const t=S.teams[c];for(const f of t.fixtures||[])out.push({c,t,f});}return out.sort((a,b)=>(a.f.d+a.f.t).localeCompare(b.f.d+b.f.t))}
+const opp=(t,f)=>f.hid===t.tid?f.a:f.h;
+const isHome=(t,f)=>f.hid===t.tid;
+
+/* ---------- tabella ---------- */
+function standings(ms){
+  const T={};const row=(id,n)=>T[id]||(T[id]={id,n,m:0,w:0,d:0,l:0,gf:0,ga:0,pts:0,res:[]});
+  for(const x of ms){row(x.hid,x.h);row(x.aid,x.a);if(x.st!=="played")continue;
+    for(const [id,g,o] of [[x.hid,x.hg,x.ag],[x.aid,x.ag,x.hg]]){const r=T[id];r.m++;r.gf+=g;r.ga+=o;
+      if(g>o){r.w++;r.pts+=3;r.res.push([x.d,"w"])}else if(g===o){r.d++;r.pts++;r.res.push([x.d,"d"])}else{r.l++;r.res.push([x.d,"l"])}}}
+  return Object.values(T).sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf||a.n.localeCompare(b.n,"hu"));
+}
+const formHtml=r=>`<span class="form">${r.res.slice().sort((a,b)=>a[0].localeCompare(b[0])).slice(-5).map(([,x])=>`<b class="${x}">${x==="w"?"GY":x==="d"?"D":"V"}</b>`).join("")}</span>`;
+
+function vOverview(){
+  const t0=todayStr(),wk=monday(t0);
+  const week=allFixtures().filter(x=>x.f.d>=wk&&x.f.d<=addDays(wk,6));
+  let h=`<h2>Ezen a héten</h2><div class="small muted" style="margin:2px 0 10px">${short(wk)} – ${short(addDays(wk,6))} · a klub összes csapatának meccsei</div>`;
+  h+=week.length?`<div class="mlist" style="margin-bottom:22px">${week.map(fxRow).join("")}</div>`:`<div class="empty" style="margin-bottom:22px">Ezen a héten nincs meccs.</div>`;
+  h+=`<h2>Csapatok</h2><div class="small muted" style="margin:2px 0 10px">Helyezés a nem hivatalos, eredményekből számolt tabellán. Koppints egy csapatra a részletekért.</div><div class="cards">`;
+  for(const c of teamCodes()){const t=S.teams[c],fx=(t.fixtures||[]).slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));
+    const last=fx.filter(f=>f.st==="played").pop(),next=fx.find(f=>f.st!=="played"&&f.st!=="postponed"&&f.d>=t0);
+    let pos="";if(t.table&&S.leagues[c]){const rows=standings(S.leagues[c].matches||[]);const i=rows.findIndex(r=>r.id===t.tid);if(i>=0)pos=`<span class="pos">${i+1}.<small>/${rows.length}</small></span>`;}
+    h+=`<button class="tc" data-act="teamTable" data-c="${c}"><div class="hd"><div style="min-width:0"><div class="nm">${tchip(c)}</div><div class="lg">${esc(t.league)}</div></div>${pos}</div>
+      <div class="ln"><span class="k">Legutóbb</span><span>${last?`${resHtml(t,last)} ${isHome(t,last)?"":"@ "}${esc(opp(t,last))} <span class="muted">${short(last.d)}</span>`:`<span class="muted">még nem játszott</span>`}</span></div>
+      <div class="ln"><span class="k">Következő</span><span>${next?`<b>${short(next.d)} ${WS[dow(next.d)]} ${esc(next.t)}</b> ${isHome(t,next)?"":"@ "}${esc(opp(t,next))}`:`<span class="muted">nincs kiírt meccs</span>`}</span></div></button>`;}
+  return h+`</div>`;
+}
+
+function vMatches(){
+  const t0=todayStr();
+  let list=allFixtures().filter(x=>(S.mTeam==="ALL"||x.c===S.mTeam)&&(S.mWhen==="next"?x.f.d>=t0&&x.f.st!=="played":x.f.st==="played"));
+  if(S.mWhen==="past")list.reverse();
+  let h=`<div class="toolbar"><select class="fsel" id="mTeam" data-act="mTeam" aria-label="Csapat"><option value="ALL">Minden csapat</option>${teamCodes().map(c=>`<option value="${c}" ${S.mTeam===c?"selected":""}>${esc(team(c).name)}</option>`).join("")}</select>
+    <div class="seg" role="group">${[["next","Következő"],["past","Lejátszott"]].map(([k,l])=>`<button data-act="mWhen" data-v="${k}" aria-pressed="${S.mWhen===k}">${l}</button>`).join("")}</div></div>`;
+  if(S.mWhen==="past"){const w=list.filter(x=>{const s=ourScore(x.t,x.f);return s[0]>s[1]}).length,d=list.filter(x=>{const s=ourScore(x.t,x.f);return s[0]===s[1]}).length;
+    h+=`<div class="note" style="margin-bottom:12px">${list.length} lejátszott meccs: <b>${w}</b> győzelem, <b>${d}</b> döntetlen, <b>${list.length-w-d}</b> vereség.</div>`;}
+  if(!list.length)return h+`<div class="empty">Nincs meccs ebben a szűrésben.</div>`;
+  let cur="",open=false;
+  for(const {c,t,f} of list){const d=dObj(f.d),k=d.getFullYear()+"-"+d.getMonth();
+    if(k!==cur){if(open)h+=`</div>`;h+=`<h3 class="month">${d.getFullYear()}. ${MON[d.getMonth()]}</h3><div class="mlist">`;cur=k;open=true;}
+    h+=fxRow({c,t,f});}
+  return h+`</div>`;
+}
+
+function vTables(){
+  const cs=teamCodes().filter(c=>S.teams[c].table);if(!cs.includes(S.tTeam))S.tTeam=cs[0];
+  const c=S.tTeam,t=S.teams[c],L=S.leagues[c];
+  let h=`<div class="toolbar"><select class="fsel" id="tTeam" data-act="tTeam" aria-label="Csapat">${cs.map(x=>`<option value="${x}" ${x===c?"selected":""}>${esc(team(x).name)} – ${esc(team(x).league)}</option>`).join("")}</select></div>`;
+  if(!L)return h+`<div class="empty">Ehhez a bajnoksághoz még nincs betöltve eredmény.</div>`;
+  const ms=L.matches||[],rows=standings(ms),played=ms.filter(x=>x.st==="played").length;
+  h+=`<h2>${esc(t.league)}</h2><div class="small muted" style="margin:2px 0 12px">Nem hivatalos tabella a ${played} lejátszott meccs eredményéből (győzelem 3, döntetlen 1 pont; holtversenyben gólkülönbség, majd több rúgott gól). Levont pontokat és zöld asztalos döntéseket nem tartalmaz.</div>
+    <div class="tablebox"><table><thead><tr><th>#</th><th class="l">Csapat</th><th>M</th><th>Gy</th><th>D</th><th>V</th><th>Gólok</th><th>GK</th><th>P</th><th class="l">Forma</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{const gd=r.gf-r.ga;h+=`<tr class="${r.id===t.tid?"ours":""}"><td>${i+1}.</td><td class="l">${esc(r.n)}</td><td>${r.m}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}:${r.ga}</td><td>${gd>0?"+":""}${gd}</td><td><b>${r.pts}</b></td><td class="l">${formHtml(r)}</td></tr>`;});
+  h+=`</tbody></table></div>`;
+  const res=ms.filter(x=>x.st==="played").sort((a,b)=>b.d.localeCompare(a.d));
+  const line=x=>`<div class="rl ${x.hid===t.tid||x.aid===t.tid?"ours":""}"><span class="small muted">${short(x.d)}</span><span class="h">${esc(x.h)}</span><span class="sc">${x.hg}–${x.ag}</span><span class="a">${esc(x.a)}</span></div>`;
+  if(res.length){h+=`<h3 style="margin:18px 0 8px">Legutóbbi eredmények</h3><div class="rlist">${res.slice(0,8).map(line).join("")}</div>`;
+    if(res.length>8)h+=`<details class="more"><summary>Összes eredmény (${res.length})</summary><div class="rlist">${res.slice(8).map(line).join("")}</div></details>`;}
+  return h;
+}
+
+function fxRow({c,t,f}){const d=dObj(f.d);return `<div class="m"><div class="d"><b>${d.getDate()}</b><span>${WS[d.getDay()]}</span></div><div style="min-width:0"><div class="o">${isHome(t,f)?"Hevesi LSC – "+esc(opp(t,f)):esc(opp(t,f))+" – Hevesi LSC"}</div>
+      <div class="meta">${tchip(c)} ${esc(f.t)} · ${esc(f.v)}</div></div><div>${resHtml(t,f)}</div></div>`}
+function render(){
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===S.tab)));
+  const main=$("#main");
+  if(!S.tLoaded){main.innerHTML=S.err?`<div class="empty">Az adatok most nem tölthetők be. Frissítsd az oldalt később.</div>`:`<div class="empty">Betöltés…</div>`;return;}
+  main.innerHTML=({attekintes:vOverview,meccsek:vMatches,tabellak:vTables}[S.tab]||vOverview)();
+}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-act],[data-tab]");if(!t)return;
+  if(t.dataset.tab){S.tab=t.dataset.tab;history.replaceState(null,"","#"+S.tab);render();window.scrollTo(0,0);return;}
+  const a=t.dataset.act;
+  if(a==="mWhen"){S.mWhen=t.dataset.v;render();}
+  else if(a==="teamTable"){const c=t.dataset.c;if(S.teams[c]?.table){S.tTeam=c;S.tab="tabellak";}else{S.mTeam=c;S.tab="meccsek";}history.replaceState(null,"","#"+S.tab);render();window.scrollTo(0,0);}
+});
+document.addEventListener("change",e=>{const t=e.target;
+  if(t.dataset.act==="mTeam"){S.mTeam=t.value;render();}
+  else if(t.dataset.act==="tTeam"){S.tTeam=t.value;render();}
+});
+render();
+fetch("data/klub.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(F=>{
+  for(const [c,t] of Object.entries(F.teams)){const {leagueMatches,...rest}=t;S.teams[c]=rest;if(t.table)S.leagues[c]={matches:leagueMatches||[]};}
+  S.tLoaded=true;S.at=F.at;$("#syncinfo").textContent="· Frissítve: "+F.at.replace(/-/g,". ")+".";render();
+}).catch(()=>{S.err=true;render();});
+</script>
+</body>
+</html>
