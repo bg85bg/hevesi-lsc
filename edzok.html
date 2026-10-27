@@ -43,7 +43,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .brand h1 span{color:var(--accent)}
 .brand .sub{color:var(--muted);font-size:13px}
 nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
-nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px 9px;font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+nav.tabs button,nav.tabs a{background:none;text-decoration:none;border:0;border-bottom:3px solid transparent;padding:10px 12px 9px;font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
 main{padding-block:18px 60px}
 h2{font-family:var(--display);font-weight:700;font-size:22px;margin:0;text-wrap:balance}
@@ -203,6 +203,7 @@ html{color-scheme:light}body{margin:0}:root{padding-top:env(safe-area-inset-top,
       <button role="tab" data-tab="palyak" aria-selected="true">Pályanaptár</button>
       <button role="tab" data-tab="heti" aria-selected="false">Heti rend</button>
       <button role="tab" data-tab="tagok" aria-selected="false" id="tabTagok" hidden>Felhasználók</button>
+      <a href="csapat.html">Csapatom →</a>
     </nav>
   </div>
 </header>
@@ -226,7 +227,7 @@ const PART={full:"teljes pálya",A:"A fele",B:"B fele"};
 const WD=["vasárnap","hétfő","kedd","szerda","csütörtök","péntek","szombat"],WS=["V","H","K","Sze","Cs","P","Szo"];
 const MON=["január","február","március","április","május","június","július","augusztus","szeptember","október","november","december"];
 const H0=8,H1=22;
-const S={tab:"palyak",teams:{},bookings:[],members:[],tLoaded:false,bLoaded:false,me:"",member:null,canWrite:false,names:{},week:null,wkMode:"edzes",draft:null,confirm:null,authMode:"login",authMsg:"",authBusy:false};
+const S={tab:"palyak",teams:{},bookings:[],members:[],tLoaded:false,bLoaded:false,me:"",member:null,canWrite:false,names:{},week:null,wkMode:"edzes",wkMine:(()=>{try{return !!localStorage.getItem("edzok.wkMine")}catch(e){return false}})(),draft:null,confirm:null,authMode:"login",authMsg:"",authBusy:false};
 try{const t=localStorage.getItem("edzok.tab");if(t)S.tab=t;}catch(e){}
 
 const $=s=>document.querySelector(s);
@@ -301,6 +302,7 @@ function itemName(x){return x.c?team(x.c).name:"Egyéb"}
 const CFG=window.KISPAD_CFG||{};
 const sb=(CFG.url&&CFG.key&&window.supabase)?window.supabase.createClient(CFG.url,CFG.key):null;
 const isAdmin=()=>S.member&&S.member.role==="admin";
+const myCodes=()=>{const mine=new Set((S.member?.teams||[]).map(sq));return squadCodes().filter(c=>mine.has(c));};
 const allowedCodes=()=>{const all=[...squadCodes(),"KAPUS","EGYENI"];if(isAdmin())return all;const mine=new Set((S.member?.teams||[]).map(sq));return all.filter(c=>mine.has(c));};
 const fromRow=r=>({id:r.id,team:sq(r.team),title:r.title||"",with:[...new Set((r.with_teams||[]).map(sq))].filter(c=>c!==sq(r.team)),pitch:r.pitch,part:r.part,start:r.start_time,end:r.end_time,kind:r.kind,date:r.date,from:r.from_date,until:r.until_date,skip:r.skip||[],note:r.note||"",by:r.created_by});
 const canEditB=b=>b&&(isAdmin()||b.by===S.me);
@@ -336,7 +338,7 @@ function vMembers(){
   <label class="field">Szerep<select id="mRole"><option value="coach">Edző</option><option value="admin">Vezetőség</option></select></label><button class="btn primary" type="submit">Felvétel</button></form>
   <div class="tablebox"><table><thead><tr><th class="l">Név</th><th class="l">E-mail</th><th>Szerep</th><th class="l">Edzést írhat be (korosztály)</th><th></th></tr></thead><tbody>`;
   for(const m of ms)h+=`<tr><td class="l">${esc(m.name||"–")}</td><td class="l">${esc(m.email)}</td><td><select class="fsel" data-act="role" data-email="${esc(m.email)}" ${m.email===S.me?"disabled":""}><option value="coach" ${m.role==="coach"?"selected":""}>Edző</option><option value="admin" ${m.role==="admin"?"selected":""}>Vezetőség</option></select></td>
-    <td class="l" style="white-space:normal;min-width:260px">${m.role==="admin"?`<span class="small muted">minden korosztály (vezetőség)</span>`:`<div class="row" style="gap:4px">${[...squadCodes(),"KAPUS","EGYENI"].map(c=>{const on=(m.teams||[]).map(sq).includes(c);return `<button class="tchip" style="--h:${HUE[c]??160};border:0;cursor:pointer;opacity:${on?1:.28}" data-act="mteam" data-email="${esc(m.email)}" data-c="${c}" aria-pressed="${on}" title="${on?"Engedélyezve – kattints a tiltáshoz":"Kattints az engedélyezéshez"}">${esc(team(c).name)}</button>`}).join("")}</div>`}</td>
+    <td class="l" style="white-space:normal;min-width:260px">${m.role==="admin"?`<div class="small muted" style="margin-bottom:4px">minden korosztályt kezel (vezetőség) · saját csapatai:</div>`:""}${`<div class="row" style="gap:4px">${(m.role==="admin"?squadCodes():[...squadCodes(),"KAPUS","EGYENI"]).map(c=>{const on=(m.teams||[]).map(sq).includes(c);return `<button class="tchip" style="--h:${HUE[c]??160};border:0;cursor:pointer;opacity:${on?1:.28}" data-act="mteam" data-email="${esc(m.email)}" data-c="${c}" aria-pressed="${on}" title="${on?"Engedélyezve – kattints a tiltáshoz":"Kattints az engedélyezéshez"}">${esc(team(c).name)}</button>`}).join("")}</div>`}</td>
     <td>${m.email===S.me?`<span class="small muted">te</span>`:S.confirm===m.email?`<button class="btn danger" data-act="delMember" data-email="${esc(m.email)}">Biztos?</button>`:`<button class="btn" data-act="askDelMember" data-email="${esc(m.email)}">Eltávolítás</button>`}</td></tr>`;
   return h+`</tbody></table></div><div class="small muted" style="margin-top:8px">Edző: csak a kijelölt korosztályoknak (és ha be van kapcsolva, kapus- vagy egyéni edzésnek) írhat be edzést, és a saját foglalásait módosíthatja. A halvány címkére kattintva engedélyezed, a sötétre kattintva tiltod. Vezetőség: bármelyik csapatnak foglalhat, bármelyik foglalást módosíthatja, és felhasználókat kezel.</div>`;
 }
@@ -370,16 +372,18 @@ function vWeek(){
   const t0=todayStr();if(!S.week)S.week=monday(t0);
   const w0=S.week,days=[0,1,2,3,4,5,6].map(i=>addDays(w0,i)),a=dObj(w0),b=dObj(days[6]);
   let h=`<div class="toolbar"><div class="seg" role="group">${[["edzes","Edzések"],["meccs","Meccsek"]].map(([k,l])=>`<button data-act="wkMode" data-v="${k}" aria-pressed="${S.wkMode===k}">${l}</button>`).join("")}</div>
+    ${myCodes().length?`<div class="seg" role="group">${[[false,"Mind"],[true,"Csak az enyém"]].map(([k,l])=>`<button data-act="wkMine" data-v="${k?1:""}" aria-pressed="${!!S.wkMine===k}">${l}</button>`).join("")}</div>`:""}
     <button class="btn" data-act="wk" data-v="-7" aria-label="Előző hét">‹</button><button class="btn" data-act="wk" data-v="0">Ez a hét</button><button class="btn" data-act="wk" data-v="7" aria-label="Következő hét">›</button>
     <div class="grow"><h2>${a.getFullYear()}. ${MON[a.getMonth()]} ${a.getDate()}. – ${a.getMonth()!==b.getMonth()?MON[b.getMonth()]+" ":""}${b.getDate()}.</h2></div>${S.canWrite&&S.wkMode==="edzes"?`<button class="btn primary" data-act="newBooking">+ Edzés beírása</button>`:""}</div>`;
+  const own=new Set(S.wkMine?myCodes():[]),mine=cs=>!own.size||cs.some(c=>own.has(sq(c)));
   const byDay={};let any=false;const add=(d,sort,html)=>{any=true;(byDay[d]=byDay[d]||[]).push([sort,html]);};
   if(S.wkMode==="edzes"){
     h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol edz ezen a héten, naponként időrendben. Egy bejegyzésre koppintva módosíthatod.</div>`;
-    days.forEach(d=>{const its=itemsOn(d),cl=clashes(its);for(const x of its){if(x.match||!x.b)continue;
+    days.forEach(d=>{const its=itemsOn(d),cl=clashes(its);for(const x of its){if(x.match||!x.b||!mine(x.cs||[x.c]))continue;
       add(d,x.s,`<button class="wi" data-act="editBooking" data-id="${x.b.id}" data-d="${d}"><b class="${cl.has(x)?"cl":""}">${hhmm(x.s)}–${hhmm(x.e)}</b> ${(x.cs||[x.c]).map(tchip).join(" ")}<small>${esc(PSHORT[x.pitch]||x.pitch)}${x.part!=="full"?" · "+PART[x.part]:""}${x.label?" · "+esc(x.label):""}</small></button>`);}});
   }else{
     h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol játszik ezen a héten, naponként időrendben. H = hazai, I = idegenben.</div>`;
-    for(const {c,t,f} of allFixtures()){if(f.d<w0||f.d>days[6])continue;
+    for(const {c,t,f} of allFixtures()){if(f.d<w0||f.d>days[6]||!mine([c]))continue;
       add(f.d,mins(f.t),`<div class="wi"><b>${esc(f.t)}</b> ${tchip(c)}<span class="wo">${isHome(t,f)?"H":"I"} – ${esc(opp(t,f))}${f.st==="played"?" "+resHtml(t,f):f.st==="postponed"?" <span class=\"chip\">elmaradt</span>":""}</span><small>${esc(f.v)}</small></div>`);}
   }
   if(!any)return h+`<div class="empty">${S.wkMode==="edzes"?"Erre a hétre még nincs beírt edzés. Az „Edzés beírása” gombbal vehetsz fel újat.":"Erre a hétre nincs kiírt meccs."}</div>`;
@@ -392,7 +396,7 @@ function openBooking(id,d){
   const b=id?S.bookings.find(x=>x.id===id):null;
   const base=d||todayStr();
   S.draft=b?{id:b.id,team:b.team,pitch:b.pitch,part:b.part,start:b.start,end:b.end,date:b.kind==="once"?b.date:d||b.from,weekly:b.kind==="weekly",dows:[dow(b.from)],until:b.until||"",note:b.note||"",orig:b,occ:d||null,title:b.title||"",with:[...(b.with||[])]}
-    :{id:null,title:"",with:[],team:allowedCodes().includes(S.lastTeam)?S.lastTeam:allowedCodes()[0],pitch:"mufu",part:"A",start:"17:00",end:"18:30",date:base,weekly:false,dows:[dow(base)],until:"2026-12-13",note:""};
+    :{id:null,title:"",with:[],team:allowedCodes().includes(S.lastTeam)?S.lastTeam:(myCodes()[0]||allowedCodes()[0]),pitch:"mufu",part:"A",start:"17:00",end:"18:30",date:base,weekly:false,dows:[dow(base)],until:"2026-12-13",note:""};
   S.confirm=null;renderDlg();const g=$("#dlg");if(!g.open)g.showModal();
 }
 function occurrences(dr){
@@ -531,6 +535,7 @@ document.addEventListener("click",async e=>{
   const a=t.dataset.act;
   if(a==="wk"){const v=Number(t.dataset.v);S.week=v?addDays(S.week||monday(todayStr()),v):monday(todayStr());render();}
   else if(a==="wkMode"){S.wkMode=t.dataset.v;render();}
+  else if(a==="wkMine"){S.wkMine=!!t.dataset.v;try{localStorage.setItem("edzok.wkMine",S.wkMine?"1":"")}catch(e){}render();}
   else if(a==="newBooking"){if(!allowedCodes().length){toast("Még nincs korosztály hozzárendelve hozzád. Kérd a vezetőséget, hogy a Felhasználók fülön állítsa be.");return;}S.canWrite=!!S.member;openBooking(null,t.dataset.d);}
   else if(a==="editBooking"){const b=S.bookings.find(x=>x.id===t.dataset.id);S.canWrite=canEditB(b);openBooking(t.dataset.id,t.dataset.d);}
   else if(a==="close")t.closest("dialog").close();

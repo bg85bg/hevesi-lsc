@@ -20,6 +20,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      SUPABASE_URL: https://nbocdaaqzizitnuxqmbb.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +31,10 @@ jobs:
         run: |
           python3 -u scripts/build.py data/klub.new.json
           mv data/klub.new.json data/klub.json
+
+      - name: Csapatom-adatok szinkronja (keretek, jegyzőkönyvek, statisztikák)
+        if: github.event_name != 'push' && env.SUPABASE_SECRET_KEY != ''
+        run: python3 -u scripts/supa_sync.py
 
       - name: Friss adatok mentése a tárolóba
         if: github.event_name != 'push'

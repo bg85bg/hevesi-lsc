@@ -88,7 +88,7 @@ def run(out):
     for code,name,org,comp,tid,lname,dur,tab in TEAMS:
         fx=[]
         for r in schedule_rows(get(f'https://adatbank.mlsz.hu/club/67/{org}/{comp}/1/{tid}.html')):
-            fx.append({'d':r['date'],'t':r['time'],'h':r['h'],'a':r['a'],'hid':r['hid'],'aid':r['aid'],'hg':r['hg'],'ag':r['ag'],'st':r['st'],'v':r['venue'],'r':r['round']})
+            fx.append({'d':r['date'],'t':r['time'],'h':r['h'],'a':r['a'],'hid':r['hid'],'aid':r['aid'],'hg':r['hg'],'ag':r['ag'],'st':r['st'],'v':r['venue'],'r':r['round'],'u':r['url']})
         lg=[];off=[]
         if tab:
             seen={};empty=0
