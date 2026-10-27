@@ -153,6 +153,16 @@ dialog::backdrop{background:rgba(8,14,10,.55)}
 .clashbox{border-radius:8px;padding:8px 10px;background:var(--bad-soft);color:var(--bad);font-size:13px}
 .okbox{border-radius:8px;padding:8px 10px;background:var(--accent-soft);color:var(--good);font-size:13px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;z-index:50;max-width:calc(100vw - 32px)}
+table.wk th,table.wk td{vertical-align:top;white-space:normal;min-width:96px;text-align:left}
+table.wk th:first-child,table.wk td:first-child{position:sticky;left:0;background:var(--surface);z-index:1;min-width:110px}
+table.wk th.today{color:var(--accent)} table.wk td.today{background:var(--accent-soft)}
+.wc{display:flex;flex-direction:column;gap:6px}
+.wc div{font-size:13px;line-height:1.25}
+.wc b{font-variant-numeric:tabular-nums}
+.wc small{display:block;color:var(--muted);font-size:11px}
+.wc .cl{color:var(--bad)}
+.howto{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:14px}
+.howto ol{margin:6px 0 0 18px;padding:0}
 @media (max-width:560px){.tl{grid-template-columns:62px minmax(0,1fr)} .it{grid-template-columns:78px minmax(0,1fr) auto}}
 </style>
 </head>
@@ -166,27 +176,35 @@ dialog::backdrop{background:rgba(8,14,10,.55)}
     </div>
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="attekintes" aria-selected="true">Áttekintés</button>
+      <button role="tab" data-tab="heti" aria-selected="false">Heti meccsrend</button>
       <button role="tab" data-tab="meccsek" aria-selected="false">Meccsek</button>
       <button role="tab" data-tab="tabellak" aria-selected="false">Tabellák</button>
     </nav>
   </div>
 </header>
 <main class="wrap" id="main"><div class="empty">Betöltés…</div></main>
-<footer class="site wrap">Forrás: <a href="https://adatbank.mlsz.hu" rel="noopener">MLSZ adatbank</a>. Az adatok kétnaponta automatikusan frissülnek. A tabellák nem hivatalosak, a lejátszott meccsek eredményeiből számoltak.</footer>
+<footer class="site wrap">Forrás: <a href="https://adatbank.mlsz.hu" rel="noopener">MLSZ adatbank</a>. Az adatok kétnaponta automatikusan frissülnek. Ahol az adatbank nem közöl tabellát, ott a tabella a lejátszott meccsek eredményeiből számolt.</footer>
 <script>
 "use strict";
 
 
 const ORDER=["F2","F3","KUPA","MAKL","U21","U17","U16","U15","U14R","U14H","U13R","U13H","U12","NOI"];
 const HUE={F2:150,F3:120,KUPA:95,MAKL:70,U21:200,U17:225,U16:250,U15:275,U14R:300,U14H:325,U13R:20,U13H:40,U12:0,NOI:180};
-const PITCHES=[{id:"fuves",n:"Füves nagypálya",halves:true},{id:"mufu",n:"Műfüves pálya",halves:true},{id:"kis",n:"Kispálya / grund",halves:false},{id:"edzo",n:"Edzőpálya",halves:false}];
-const VENUE={"Hevesi LSC Sporttelep":"fuves","Heves Tartalékpálya":"edzo"};
-const PART={full:"teljes pálya",A:"A fél",B:"B fél"};
+const ADULT=["F2","F3","KUPA","MAKL"];
+const PITCHES=[
+  {id:"mufu",n:"Nagy műfüves pálya",halves:true,info:"A legtöbb edzés és hazai meccs helye. Edzésre kettéosztható: egyszerre két csapat használhatja."},
+  {id:"edzo",n:"Élőfüves edzőpálya",halves:true,info:"Edzésekre és meccsekre. Edzésre kettéosztható: egyszerre két csapat használhatja."},
+  {id:"kis",n:"Kis műfüves pálya",halves:false,info:"Csak edzésekre."},
+  {id:"fuves",n:"Füves nagypálya",halves:false,only:ADULT,info:"Csak a felnőtt csapat edz és játszik itt."}];
+const pitchOk=(p,c)=>!p.only||p.only.includes(c);
+const VENUE={"Hevesi LSC Sporttelep":"main","Heves Tartalékpálya":"edzo"};
+const venuePitch=(v,c)=>VENUE[v]==="main"?(ADULT.includes(c)?"fuves":"mufu"):VENUE[v];
+const PART={full:"teljes pálya",A:"A fele",B:"B fele"};
 const WD=["vasárnap","hétfő","kedd","szerda","csütörtök","péntek","szombat"],WS=["V","H","K","Sze","Cs","P","Szo"];
 const MON=["január","február","március","április","május","június","július","augusztus","szeptember","október","november","december"];
 const H0=8,H1=22;
-const S={tab:"attekintes",teams:{},leagues:{},tLoaded:false,at:"",mTeam:"ALL",mWhen:"next",tTeam:"U13H"};
-const hashTab=location.hash.slice(1);if(["attekintes","meccsek","tabellak"].includes(hashTab))S.tab=hashTab;
+const S={tab:"attekintes",teams:{},leagues:{},tLoaded:false,at:"",mTeam:"ALL",mWhen:"next",tTeam:"U13H",week:null,wkMode:"meccs",isOwner:false,canWrite:false};
+const hashTab=location.hash.slice(1);if(["attekintes","heti","meccsek","tabellak"].includes(hashTab))S.tab=hashTab;
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -220,23 +238,48 @@ function standings(ms){
       if(g>o){r.w++;r.pts+=3;r.res.push([x.d,"w"])}else if(g===o){r.d++;r.pts++;r.res.push([x.d,"d"])}else{r.l++;r.res.push([x.d,"l"])}}}
   return Object.values(T).sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf||a.n.localeCompare(b.n,"hu"));
 }
+function ourName(t){const f=(t.fixtures||[])[0];return f?(f.hid===t.tid?f.h:f.a):""}
+function tableFor(c){const t=S.teams[c],L=S.leagues[c];if(!t||!L)return null;
+  if(L.official&&L.official.length){const on=ourName(t).toLowerCase();return {official:true,rows:L.official.map(r=>({...r,ours:r.n.toLowerCase()===on,res:(r.form||[]).map((x,i)=>[String(i).padStart(3,"0"),x==="GY"?"w":x==="D"?"d":"l"])}))};}
+  return {official:false,rows:standings(L.matches||[]).map(r=>({...r,ours:r.id===t.tid}))};}
 const formHtml=r=>`<span class="form">${r.res.slice().sort((a,b)=>a[0].localeCompare(b[0])).slice(-5).map(([,x])=>`<b class="${x}">${x==="w"?"GY":x==="d"?"D":"V"}</b>`).join("")}</span>`;
 
 function vOverview(){
   const t0=todayStr(),wk=monday(t0);
   const week=allFixtures().filter(x=>x.f.d>=wk&&x.f.d<=addDays(wk,6));
-  let h=`<h2>Ezen a héten</h2><div class="small muted" style="margin:2px 0 10px">${short(wk)} – ${short(addDays(wk,6))} · a klub összes csapatának meccsei</div>`;
+  let h=`<h2>Ezen a héten</h2><div class="small muted" style="margin:2px 0 10px">${short(wk)} – ${short(addDays(wk,6))} · a klub összes csapatának meccsei · táblázatos nézet a „Heti meccsrend” fülön</div>`;
   h+=week.length?`<div class="mlist" style="margin-bottom:22px">${week.map(fxRow).join("")}</div>`:`<div class="empty" style="margin-bottom:22px">Ezen a héten nincs meccs.</div>`;
-  h+=`<h2>Csapatok</h2><div class="small muted" style="margin:2px 0 10px">Helyezés a nem hivatalos, eredményekből számolt tabellán. Koppints egy csapatra a részletekért.</div><div class="cards">`;
+  h+=`<h2>Csapatok</h2><div class="small muted" style="margin:2px 0 10px">Helyezés a hivatalos MLSZ-tabellán, ahol az adatbank közöl ilyet, máshol a lejátszott meccsekből számolt tabellán. Koppints egy csapatra a részletekért.</div><div class="cards">`;
   for(const c of teamCodes()){const t=S.teams[c],fx=(t.fixtures||[]).slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));
     const last=fx.filter(f=>f.st==="played").pop(),next=fx.find(f=>f.st!=="played"&&f.st!=="postponed"&&f.d>=t0);
-    let pos="";if(t.table&&S.leagues[c]){const rows=standings(S.leagues[c].matches||[]);const i=rows.findIndex(r=>r.id===t.tid);if(i>=0)pos=`<span class="pos">${i+1}.<small>/${rows.length}</small></span>`;}
+    let pos="";const tb=t.table?tableFor(c):null;if(tb){const i=tb.rows.findIndex(r=>r.ours);if(i>=0)pos=`<span class="pos" title="${tb.official?"hivatalos tabella":"eredményekből számolt tabella"}">${i+1}.<small>/${tb.rows.length}</small></span>`;}
     h+=`<button class="tc" data-act="teamTable" data-c="${c}"><div class="hd"><div style="min-width:0"><div class="nm">${tchip(c)}</div><div class="lg">${esc(t.league)}</div></div>${pos}</div>
       <div class="ln"><span class="k">Legutóbb</span><span>${last?`${resHtml(t,last)} ${isHome(t,last)?"":"@ "}${esc(opp(t,last))} <span class="muted">${short(last.d)}</span>`:`<span class="muted">még nem játszott</span>`}</span></div>
       <div class="ln"><span class="k">Következő</span><span>${next?`<b>${short(next.d)} ${WS[dow(next.d)]} ${esc(next.t)}</b> ${isHome(t,next)?"":"@ "}${esc(opp(t,next))}`:`<span class="muted">nincs kiírt meccs</span>`}</span></div></button>`;}
   return h+`</div>`;
 }
 
+const PSHORT={mufu:"Nagy műfüves",edzo:"Élőfüves edzőpálya",kis:"Kis műfüves",fuves:"Füves nagypálya"};
+function vWeek(){
+  const t0=todayStr();if(!S.week)S.week=monday(t0);
+  const w0=S.week,days=[0,1,2,3,4,5,6].map(i=>addDays(w0,i)),a=dObj(w0),b=dObj(days[6]);
+  let h=`<div class="toolbar"><button class="btn" data-act="wk" data-v="-7" aria-label="Előző hét">‹</button><button class="btn" data-act="wk" data-v="0">Ez a hét</button><button class="btn" data-act="wk" data-v="7" aria-label="Következő hét">›</button>
+    <div class="grow"><h2>${a.getFullYear()}. ${MON[a.getMonth()]} ${a.getDate()}. – ${a.getMonth()!==b.getMonth()?MON[b.getMonth()]+" ":""}${b.getDate()}.</h2></div>${S.canWrite&&S.wkMode==="edzes"?`<button class="btn primary" data-act="newBooking">+ Edzés beírása</button>`:""}</div>`;
+  const cells={};let any=false;
+  if(S.wkMode==="edzes"){
+    h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol edz ezen a héten. Egy cellára koppintva módosíthatod a bejegyzést.</div>`;
+    days.forEach(d=>{const its=itemsOn(d),cl=clashes(its);for(const x of its){if(x.match||!x.b)continue;any=true;(cells[x.c+"|"+d]=cells[x.c+"|"+d]||[]).push(`<div><button class="btn" style="padding:4px 7px;font-size:13px;text-align:left;width:100%" data-act="editBooking" data-id="${x.b.id}" data-d="${d}"><b class="${cl.has(x)?"cl":""}">${hhmm(x.s)}–${hhmm(x.e)}</b><small>${esc(PSHORT[x.pitch]||x.pitch)}${x.part!=="full"?" · "+PART[x.part]:""}${x.label?" · "+esc(x.label):""}</small></button></div>`);}});
+  }else{
+    h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol játszik ezen a héten. H = hazai, I = idegenben.</div>`;
+    for(const {c,t,f} of allFixtures()){if(f.d<w0||f.d>days[6])continue;any=true;
+      (cells[c+"|"+f.d]=cells[c+"|"+f.d]||[]).push(`<div><b>${esc(f.t)}</b> ${isHome(t,f)?"H":"I"} – ${esc(opp(t,f))}${f.st==="played"?" "+resHtml(t,f):f.st==="postponed"?" <span class=\"chip\">elmaradt</span>":""}<small>${esc(f.v)}</small></div>`);}
+  }
+  if(!any)return h+`<div class="empty">${S.wkMode==="edzes"?"Erre a hétre még nincs beírt edzés. Az „Edzés beírása” gombbal vehetsz fel újat.":"Erre a hétre nincs kiírt meccs."}</div>`;
+  h+=`<div class="tablebox"><table class="wk"><thead><tr><th>Csapat</th>${days.map(d=>`<th class="${d===t0?"today":""}">${WD[dow(d)]}<br><span class="muted" style="font-weight:400">${short(d)}</span></th>`).join("")}</tr></thead><tbody>`;
+  for(const c of teamCodes()){const row=days.map(d=>cells[c+"|"+d]);if(!row.some(Boolean))continue;
+    h+=`<tr><td>${tchip(c)}</td>${days.map((d,i)=>`<td class="${d===t0?"today":""}"><div class="wc">${(row[i]||[]).join("")}</div></td>`).join("")}</tr>`;}
+  return h+`</tbody></table></div>`;
+}
 function vMatches(){
   const t0=todayStr();
   let list=allFixtures().filter(x=>(S.mTeam==="ALL"||x.c===S.mTeam)&&(S.mWhen==="next"?x.f.d>=t0&&x.f.st!=="played":x.f.st==="played"));
@@ -258,10 +301,10 @@ function vTables(){
   const c=S.tTeam,t=S.teams[c],L=S.leagues[c];
   let h=`<div class="toolbar"><select class="fsel" id="tTeam" data-act="tTeam" aria-label="Csapat">${cs.map(x=>`<option value="${x}" ${x===c?"selected":""}>${esc(team(x).name)} – ${esc(team(x).league)}</option>`).join("")}</select></div>`;
   if(!L)return h+`<div class="empty">Ehhez a bajnoksághoz még nincs betöltve eredmény.</div>`;
-  const ms=L.matches||[],rows=standings(ms),played=ms.filter(x=>x.st==="played").length;
-  h+=`<h2>${esc(t.league)}</h2><div class="small muted" style="margin:2px 0 12px">Nem hivatalos tabella a ${played} lejátszott meccs eredményéből (győzelem 3, döntetlen 1 pont; holtversenyben gólkülönbség, majd több rúgott gól). Levont pontokat és zöld asztalos döntéseket nem tartalmaz.</div>
+  const ms=L.matches||[],tb=tableFor(c),rows=tb.rows,played=ms.filter(x=>x.st==="played").length;
+  h+=`<h2>${esc(t.league)}</h2><div class="small muted" style="margin:2px 0 12px">${tb.official?`<span class="chip ok">Hivatalos tabella</span> az MLSZ adatbankból.`:`Az MLSZ adatbank ehhez a bajnoksághoz nem közöl tabellát, ezért a ${played} lejátszott meccs eredményéből számoltam (győzelem 3, döntetlen 1 pont; holtversenyben gólkülönbség, majd több rúgott gól).`}</div>
     <div class="tablebox"><table><thead><tr><th>#</th><th class="l">Csapat</th><th>M</th><th>Gy</th><th>D</th><th>V</th><th>Gólok</th><th>GK</th><th>P</th><th class="l">Forma</th></tr></thead><tbody>`;
-  rows.forEach((r,i)=>{const gd=r.gf-r.ga;h+=`<tr class="${r.id===t.tid?"ours":""}"><td>${i+1}.</td><td class="l">${esc(r.n)}</td><td>${r.m}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}:${r.ga}</td><td>${gd>0?"+":""}${gd}</td><td><b>${r.pts}</b></td><td class="l">${formHtml(r)}</td></tr>`;});
+  rows.forEach((r,i)=>{const gd=r.gf-r.ga;h+=`<tr class="${r.ours?"ours":""}"><td>${r.pos||i+1}.</td><td class="l">${esc(r.n)}</td><td>${r.m}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}:${r.ga}</td><td>${gd>0?"+":""}${gd}</td><td><b>${r.pts}</b></td><td class="l">${formHtml(r)}</td></tr>`;});
   h+=`</tbody></table></div>`;
   const res=ms.filter(x=>x.st==="played").sort((a,b)=>b.d.localeCompare(a.d));
   const line=x=>`<div class="rl ${x.hid===t.tid||x.aid===t.tid?"ours":""}"><span class="small muted">${short(x.d)}</span><span class="h">${esc(x.h)}</span><span class="sc">${x.hg}–${x.ag}</span><span class="a">${esc(x.a)}</span></div>`;
@@ -270,20 +313,23 @@ function vTables(){
   return h;
 }
 
+
 function fxRow({c,t,f}){const d=dObj(f.d);return `<div class="m"><div class="d"><b>${d.getDate()}</b><span>${WS[d.getDay()]}</span></div><div style="min-width:0"><div class="o">${isHome(t,f)?"Hevesi LSC – "+esc(opp(t,f)):esc(opp(t,f))+" – Hevesi LSC"}</div>
       <div class="meta">${tchip(c)} ${esc(f.t)} · ${esc(f.v)}</div></div><div>${resHtml(t,f)}</div></div>`}
 function render(){
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===S.tab)));
   const main=$("#main");
   if(!S.tLoaded){main.innerHTML=S.err?`<div class="empty">Az adatok most nem tölthetők be. Frissítsd az oldalt később.</div>`:`<div class="empty">Betöltés…</div>`;return;}
-  main.innerHTML=({attekintes:vOverview,meccsek:vMatches,tabellak:vTables}[S.tab]||vOverview)();
+  main.innerHTML=({attekintes:vOverview,heti:vWeek,meccsek:vMatches,tabellak:vTables}[S.tab]||vOverview)();
 }
+const go=tab=>{S.tab=tab;history.replaceState(null,"","#"+tab);render();window.scrollTo(0,0);};
 document.addEventListener("click",e=>{
   const t=e.target.closest("[data-act],[data-tab]");if(!t)return;
-  if(t.dataset.tab){S.tab=t.dataset.tab;history.replaceState(null,"","#"+S.tab);render();window.scrollTo(0,0);return;}
+  if(t.dataset.tab){go(t.dataset.tab);return;}
   const a=t.dataset.act;
   if(a==="mWhen"){S.mWhen=t.dataset.v;render();}
-  else if(a==="teamTable"){const c=t.dataset.c;if(S.teams[c]?.table){S.tTeam=c;S.tab="tabellak";}else{S.mTeam=c;S.tab="meccsek";}history.replaceState(null,"","#"+S.tab);render();window.scrollTo(0,0);}
+  else if(a==="wk"){const v=Number(t.dataset.v);S.week=v?addDays(S.week||monday(todayStr()),v):monday(todayStr());render();}
+  else if(a==="teamTable"){const c=t.dataset.c;if(S.teams[c]?.table){S.tTeam=c;go("tabellak");}else{S.mTeam=c;go("meccsek");}}
 });
 document.addEventListener("change",e=>{const t=e.target;
   if(t.dataset.act==="mTeam"){S.mTeam=t.value;render();}
@@ -291,7 +337,7 @@ document.addEventListener("change",e=>{const t=e.target;
 });
 render();
 fetch("data/klub.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(F=>{
-  for(const [c,t] of Object.entries(F.teams)){const {leagueMatches,...rest}=t;S.teams[c]=rest;if(t.table)S.leagues[c]={matches:leagueMatches||[]};}
+  for(const [c,t] of Object.entries(F.teams)){const {leagueMatches,official,...rest}=t;S.teams[c]=rest;if(t.table)S.leagues[c]={matches:leagueMatches||[],official:official||[]};}
   S.tLoaded=true;S.at=F.at;$("#syncinfo").textContent="· Frissítve: "+F.at.replace(/-/g,". ")+".";render();
 }).catch(()=>{S.err=true;render();});
 </script>

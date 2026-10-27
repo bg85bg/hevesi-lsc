@@ -1,6 +1,6 @@
-"""NEO24-Hevesi LSC – a klub összes csapatának menetrendje, eredményei és bajnoksági meccsei
-az MLSZ adatbankból (adatbank.mlsz.hu). Kimenet: data/klub.json
-Futtatás: python3 scripts/build.py data/klub.json"""
+"""NEO24-Hevesi LSC – a klub összes csapatának menetrendje, eredményei, bajnoksági meccsei
+és (ahol az adatbank közöl ilyet) hivatalos tabellája az MLSZ adatbankból (adatbank.mlsz.hu).
+Kimenet: data/klub.json   Futtatás: python3 -u scripts/build.py data/klub.json"""
 import re, html, json, time, subprocess, sys, datetime
 
 def get(url):
@@ -35,6 +35,36 @@ def schedule_rows(t):
                'url': mu.group(1) if mu else None, 'round': int(mu.group(2)) if mu else None, 'mid': mu.group(3) if mu else None}
 
 
+def official_table(t):
+    """Hivatalos tabella egy bajnoksági forduló-oldalról (ha az adatbank közöl ilyet)."""
+    i = t.find('id="tabella_panel"')
+    if i < 0:
+        return []
+    blk = t[i:t.find('</table>', i)]
+    rows = []
+    for r in re.findall(r'<tr[^>]*>(.*?)</tr>', blk, re.S):
+        tds = re.findall(r'<td[^>]*>(.*?)</td>', r, re.S)
+        if len(tds) < 11:
+            continue
+        c = [clean(x) for x in tds]
+        tid = re.search(r'/(\d+)\.html', r)
+        try:
+            rows.append({'pos': int(c[0]), 'id': tid.group(1) if tid else '', 'n': c[2], 'm': int(c[3]), 'w': int(c[4]), 'd': int(c[5]), 'l': int(c[6]),
+                         'gf': int(c[7]), 'ga': int(c[8]), 'pts': int(c[10]), 'form': c[-1].split()})
+        except ValueError:
+            continue
+    return rows
+
+
+def best_table(cur, new):
+    """A legtöbb lejátszott meccset tartalmazó (azaz legfrissebb) tabellát tartja meg."""
+    if not new:
+        return cur
+    if not cur or sum(r['m'] for r in new) >= sum(r['m'] for r in cur):
+        return new
+    return cur
+
+
 
 TEAMS=[ # kód, név, szervező, verseny, csapat-id, bajnokság neve, meccsidő (perc), tabella?
  ('F2','Felnőtt',10,33864,329456,'Heves Vármegyei II. osztály',120,True),
@@ -59,12 +89,12 @@ def run(out):
         fx=[]
         for r in schedule_rows(get(f'https://adatbank.mlsz.hu/club/67/{org}/{comp}/1/{tid}.html')):
             fx.append({'d':r['date'],'t':r['time'],'h':r['h'],'a':r['a'],'hid':r['hid'],'aid':r['aid'],'hg':r['hg'],'ag':r['ag'],'st':r['st'],'v':r['venue'],'r':r['round']})
-        lg=[]
+        lg=[];off=[]
         if tab:
             seen={};empty=0
             for rnd in range(1,41):
-                new=0
-                for r in schedule_rows(get(f'https://adatbank.mlsz.hu/league/67/{org}/{comp}/{rnd}.html')):
+                new=0;page=get(f'https://adatbank.mlsz.hu/league/67/{org}/{comp}/{rnd}.html');off=best_table(off,official_table(page))
+                for r in schedule_rows(page):
                     k=(r['hid'],r['aid']);rec={'d':r['date'],'h':r['h'],'a':r['a'],'hid':r['hid'],'aid':r['aid'],'hg':r['hg'],'ag':r['ag'],'st':r['st']}
                     o=seen.get(k)
                     if not o: new+=1
@@ -72,9 +102,9 @@ def run(out):
                 empty=empty+1 if new==0 else 0
                 if empty>=6: break
             lg=sorted(seen.values(),key=lambda x:(x['d'],x['h']))
-        res['teams'][code]={'name':name,'league':lname,'tid':str(tid),'dur':dur,'table':tab,'fixtures':fx,'leagueMatches':lg}
+        res['teams'][code]={'name':name,'league':lname,'tid':str(tid),'dur':dur,'table':tab,'fixtures':fx,'leagueMatches':lg,'official':off}
         n=len({m['hid'] for m in lg}|{m['aid'] for m in lg})
-        print(code,len(fx),'saját meccs,',sum(f['st']=='played' for f in fx),'lejátszva | bajnokság',len(lg),'meccs',n,'csapat',file=sys.stderr)
+        print(code,len(fx),'saját meccs,',sum(f['st']=='played' for f in fx),'lejátszva | bajnokság',len(lg),'meccs',n,'csapat |','hivatalos tabella' if off else 'számolt tabella',file=sys.stderr)
     json.dump(res,open(out,'w'),ensure_ascii=False)
 
 if __name__ == '__main__':
