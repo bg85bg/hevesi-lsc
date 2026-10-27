@@ -153,6 +153,20 @@ dialog::backdrop{background:rgba(8,14,10,.55)}
 .clashbox{border-radius:8px;padding:8px 10px;background:var(--bad-soft);color:var(--bad);font-size:13px}
 .okbox{border-radius:8px;padding:8px 10px;background:var(--accent-soft);color:var(--good);font-size:13px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;z-index:50;max-width:calc(100vw - 32px)}
+.wkgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+@media (max-width:900px){.wkgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.wkgrid{grid-template-columns:minmax(0,1fr)}}
+.wd{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.wd.today{border-color:var(--accent);background:var(--accent-soft)}
+.wdh{font-size:14px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.wdh b{font-family:var(--display);font-size:17px}
+.wi{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;line-height:1.3;color:var(--fg);min-width:0;overflow-wrap:anywhere}
+button.wi{cursor:pointer}
+.wi b{font-variant-numeric:tabular-nums;font-size:14px}
+.wi b.cl{color:var(--bad)}
+.wi .tchip{margin:2px 0}
+.wi .wo{display:block;font-weight:600;margin-top:2px}
+.wi small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
 table.wk th,table.wk td{vertical-align:top;white-space:normal;min-width:96px;text-align:left}
 table.wk th:first-child,table.wk td:first-child{position:sticky;left:0;background:var(--surface);z-index:1;min-width:110px}
 table.wk th.today{color:var(--accent)} table.wk td.today{background:var(--accent-soft)}
@@ -266,20 +280,19 @@ function vWeek(){
   const w0=S.week,days=[0,1,2,3,4,5,6].map(i=>addDays(w0,i)),a=dObj(w0),b=dObj(days[6]);
   let h=`<div class="toolbar"><button class="btn" data-act="wk" data-v="-7" aria-label="Előző hét">‹</button><button class="btn" data-act="wk" data-v="0">Ez a hét</button><button class="btn" data-act="wk" data-v="7" aria-label="Következő hét">›</button>
     <div class="grow"><h2>${a.getFullYear()}. ${MON[a.getMonth()]} ${a.getDate()}. – ${a.getMonth()!==b.getMonth()?MON[b.getMonth()]+" ":""}${b.getDate()}.</h2></div>${S.canWrite&&S.wkMode==="edzes"?`<button class="btn primary" data-act="newBooking">+ Edzés beírása</button>`:""}</div>`;
-  const cells={};let any=false;
+  const byDay={};let any=false;const add=(d,sort,html)=>{any=true;(byDay[d]=byDay[d]||[]).push([sort,html]);};
   if(S.wkMode==="edzes"){
-    h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol edz ezen a héten. Egy cellára koppintva módosíthatod a bejegyzést.</div>`;
-    days.forEach(d=>{const its=itemsOn(d),cl=clashes(its);for(const x of its){if(x.match||!x.b)continue;any=true;(cells[x.c+"|"+d]=cells[x.c+"|"+d]||[]).push(`<div><button class="btn" style="padding:4px 7px;font-size:13px;text-align:left;width:100%" data-act="editBooking" data-id="${x.b.id}" data-d="${d}"><b class="${cl.has(x)?"cl":""}">${hhmm(x.s)}–${hhmm(x.e)}</b><small>${esc(PSHORT[x.pitch]||x.pitch)}${x.part!=="full"?" · "+PART[x.part]:""}${x.label?" · "+esc(x.label):""}</small></button></div>`);}});
+    h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol edz ezen a héten, naponként időrendben. Egy bejegyzésre koppintva módosíthatod.</div>`;
+    days.forEach(d=>{const its=itemsOn(d),cl=clashes(its);for(const x of its){if(x.match||!x.b)continue;
+      add(d,x.s,`<button class="wi" data-act="editBooking" data-id="${x.b.id}" data-d="${d}"><b class="${cl.has(x)?"cl":""}">${hhmm(x.s)}–${hhmm(x.e)}</b> ${(x.cs||[x.c]).map(tchip).join(" ")}<small>${esc(PSHORT[x.pitch]||x.pitch)}${x.part!=="full"?" · "+PART[x.part]:""}${x.label?" · "+esc(x.label):""}</small></button>`);}});
   }else{
-    h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol játszik ezen a héten. H = hazai, I = idegenben.</div>`;
-    for(const {c,t,f} of allFixtures()){if(f.d<w0||f.d>days[6])continue;any=true;
-      (cells[c+"|"+f.d]=cells[c+"|"+f.d]||[]).push(`<div><b>${esc(f.t)}</b> ${isHome(t,f)?"H":"I"} – ${esc(opp(t,f))}${f.st==="played"?" "+resHtml(t,f):f.st==="postponed"?" <span class=\"chip\">elmaradt</span>":""}<small>${esc(f.v)}</small></div>`);}
+    h+=`<div class="small muted" style="margin-bottom:10px">Ki mikor hol játszik ezen a héten, naponként időrendben. H = hazai, I = idegenben.</div>`;
+    for(const {c,t,f} of allFixtures()){if(f.d<w0||f.d>days[6])continue;
+      add(f.d,mins(f.t),`<div class="wi"><b>${esc(f.t)}</b> ${tchip(c)}<span class="wo">${isHome(t,f)?"H":"I"} – ${esc(opp(t,f))}${f.st==="played"?" "+resHtml(t,f):f.st==="postponed"?" <span class=\"chip\">elmaradt</span>":""}</span><small>${esc(f.v)}</small></div>`);}
   }
   if(!any)return h+`<div class="empty">${S.wkMode==="edzes"?"Erre a hétre még nincs beírt edzés. Az „Edzés beírása” gombbal vehetsz fel újat.":"Erre a hétre nincs kiírt meccs."}</div>`;
-  h+=`<div class="tablebox"><table class="wk"><thead><tr><th>Csapat</th>${days.map(d=>`<th class="${d===t0?"today":""}">${WD[dow(d)]}<br><span class="muted" style="font-weight:400">${short(d)}</span></th>`).join("")}</tr></thead><tbody>`;
-  for(const c of teamCodes()){const row=days.map(d=>cells[c+"|"+d]);if(!row.some(Boolean))continue;
-    h+=`<tr><td>${tchip(c)}</td>${days.map((d,i)=>`<td class="${d===t0?"today":""}"><div class="wc">${(row[i]||[]).join("")}</div></td>`).join("")}</tr>`;}
-  return h+`</tbody></table></div>`;
+  h+=`<div class="wkgrid">${days.map(d=>`<section class="wd ${d===t0?"today":""}"><div class="wdh"><b>${WD[dow(d)]}</b> <span class="muted">${short(d)}</span></div>${(byDay[d]||[]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]).join("")||`<div class="small muted">–</div>`}</section>`).join("")}</div>`;
+  return h;
 }
 function vMatches(){
   const t0=todayStr();
