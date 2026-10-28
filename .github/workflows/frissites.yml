@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 45
     env:
       SUPABASE_URL: https://nbocdaaqzizitnuxqmbb.supabase.co
+      PYTHONDONTWRITEBYTECODE: "1"
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
